@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Servicio para la base de datos MySQL
   db:
@@ -9,11 +7,15 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
       MYSQL_DATABASE: ${DB_NAME}
-    ports:
-      - "${DB_PORT}:3306"
     volumes:
       - mysql_data:/var/lib/mysql
       - ./database/data/schema.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
 
   # Servicio para la API Node.js
   app:
@@ -30,7 +32,8 @@ services:
       - DB_NAME=${DB_NAME}
       - DB_PORT=3306
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
   # Interfaz gráfica para gestionar MySQL
   phpmyadmin:
@@ -44,7 +47,8 @@ services:
       PMA_PORT: 3306
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
 # Volúmenes para persistir datos de la BD
 volumes:
